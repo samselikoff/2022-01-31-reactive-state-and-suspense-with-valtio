@@ -5,6 +5,9 @@ import { suspend } from "suspend-react";
 import Dashboard from "../components/Dashboard";
 import SignIn from "../components/SignIn";
 
+import { proxy, useSnapshot } from "valtio";
+import { derive, proxyWithComputed } from "valtio/utils";
+
 let firebaseConfig = {
   apiKey: "AIzaSyC6m0utKMqus70Z7Ol8VGcx0rj_CV7iMNg",
   authDomain: "demos-fd990.firebaseapp.com",
@@ -16,34 +19,39 @@ let firebaseConfig = {
 let firebaseApp = initializeApp(firebaseConfig);
 let auth = getAuth(firebaseApp);
 
-async function getInitialAuthState() {
-  return new Promise((resolve) => {
-    let unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      resolve(firebaseUser);
-      unsub();
-    });
+let initialSession = new Promise((resolve) => {
+  onAuthStateChanged(auth, (firebaseUser) => {
+    resolve(firebaseUser);
+    sessionState.currentUser = firebaseUser;
   });
-}
+});
+
+let sessionState = proxy({
+  currentUser: undefined,
+  initialSession,
+});
 
 function useSession() {
-  let initialUser = suspend(getInitialAuthState, ["initialAuthState"]);
-  let [currentUser, setCurrentUser] = useState(initialUser);
+  let snap = useSnapshot(sessionState);
+  let status =
+    snap.currentUser === undefined
+      ? "unknown"
+      : snap.currentUser === null
+      ? "unauthenticated"
+      : "authenticated";
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, (firebaseUser) => {
-      setCurrentUser(firebaseUser);
-    });
-  }, []);
-
-  return { currentUser };
+  return {
+    status,
+  };
 }
 
 export default function Home() {
-  let { currentUser } = useSession();
+  let { currentUser, status } = useSession();
 
-  return currentUser ? (
-    <Dashboard name={currentUser.displayName} />
-  ) : (
-    <SignIn />
-  );
+  return <p>{status}</p>;
+  // return currentUser ? (
+  //   <Dashboard name={currentUser.displayName} />
+  // ) : (
+  //   <SignIn />
+  // );
 }

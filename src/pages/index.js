@@ -19,15 +19,15 @@ let firebaseApp = initializeApp(firebaseConfig);
 let auth = getAuth(firebaseApp);
 
 let resolve;
-let fetchInitialSession = new Promise((r) => (resolve = r));
+let initialSession = new Promise((r) => (resolve = r));
 
 onAuthStateChanged(auth, (firebaseUser) => {
-  sessionState.currentUser = firebaseUser;
+  session.currentUser = firebaseUser;
   resolve();
 });
 
-let sessionState = proxy({
-  currentUser: undefined,
+let session = proxy({
+  currentUser: initialSession,
   get status() {
     return this.currentUser === undefined
       ? "unknown"
@@ -38,15 +38,11 @@ let sessionState = proxy({
 });
 
 function useSession() {
-  let { currentUser, status } = useSnapshot(sessionState);
-
-  if (status === "unknown") {
-    throw fetchInitialSession;
-  }
+  let { currentUser, status } = useSnapshot(session);
 
   return {
-    status,
     currentUser,
+    status,
   };
 }
 

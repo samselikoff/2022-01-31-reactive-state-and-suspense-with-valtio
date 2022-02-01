@@ -6,7 +6,6 @@ import Dashboard from "../components/Dashboard";
 import SignIn from "../components/SignIn";
 
 import { proxy, useSnapshot } from "valtio";
-import { derive, proxyWithComputed } from "valtio/utils";
 
 let firebaseConfig = {
   apiKey: "AIzaSyC6m0utKMqus70Z7Ol8VGcx0rj_CV7iMNg",
@@ -19,39 +18,44 @@ let firebaseConfig = {
 let firebaseApp = initializeApp(firebaseConfig);
 let auth = getAuth(firebaseApp);
 
-let initialSession = new Promise((resolve) => {
-  onAuthStateChanged(auth, (firebaseUser) => {
-    resolve(firebaseUser);
-    sessionState.currentUser = firebaseUser;
-  });
+let resolve;
+let fetchInitialSession = new Promise((r) => (resolve = r));
+
+onAuthStateChanged(auth, (firebaseUser) => {
+  sessionState.currentUser = firebaseUser;
+  resolve();
 });
 
 let sessionState = proxy({
   currentUser: undefined,
-  initialSession,
+  get status() {
+    return this.currentUser === undefined
+      ? "unknown"
+      : this.currentUser === null
+      ? "unauthenticated"
+      : "authenticated";
+  },
 });
 
 function useSession() {
-  let snap = useSnapshot(sessionState);
-  let status =
-    snap.currentUser === undefined
-      ? "unknown"
-      : snap.currentUser === null
-      ? "unauthenticated"
-      : "authenticated";
+  let { currentUser, status } = useSnapshot(sessionState);
+
+  if (status === "unknown") {
+    throw fetchInitialSession;
+  }
 
   return {
     status,
+    currentUser,
   };
 }
 
 export default function Home() {
-  let { currentUser, status } = useSession();
+  let { currentUser } = useSession();
 
-  return <p>{status}</p>;
-  // return currentUser ? (
-  //   <Dashboard name={currentUser.displayName} />
-  // ) : (
-  //   <SignIn />
-  // );
+  return currentUser ? (
+    <Dashboard name={currentUser.displayName} />
+  ) : (
+    <SignIn />
+  );
 }

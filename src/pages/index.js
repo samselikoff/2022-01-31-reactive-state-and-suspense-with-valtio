@@ -5,8 +5,6 @@ import { suspend } from "suspend-react";
 import Dashboard from "../components/Dashboard";
 import SignIn from "../components/SignIn";
 
-import { proxy, useSnapshot } from "valtio";
-
 let firebaseConfig = {
   apiKey: "AIzaSyC6m0utKMqus70Z7Ol8VGcx0rj_CV7iMNg",
   authDomain: "demos-fd990.firebaseapp.com",
@@ -18,36 +16,17 @@ let firebaseConfig = {
 let firebaseApp = initializeApp(firebaseConfig);
 let auth = getAuth(firebaseApp);
 
-let resolve;
-let initialSession = new Promise((r) => (resolve = r));
-
-onAuthStateChanged(auth, (firebaseUser) => {
-  session.currentUser = firebaseUser;
-  resolve();
-});
-
-let session = proxy({
-  currentUser: initialSession,
-  get status() {
-    return this.currentUser === undefined
-      ? "unknown"
-      : this.currentUser === null
-      ? "unauthenticated"
-      : "authenticated";
-  },
-});
-
-function useSession() {
-  let { currentUser, status } = useSnapshot(session);
-
-  return {
-    currentUser,
-    status,
-  };
+async function getInitialAuthState() {
+  return new Promise((resolve) => {
+    let unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      resolve(firebaseUser);
+      unsub();
+    });
+  });
 }
 
 export default function Home() {
-  let { currentUser } = useSession();
+  let currentUser = suspend(getInitialAuthState, ["initialAuthState"]);
 
   return currentUser ? (
     <Dashboard name={currentUser.displayName} />

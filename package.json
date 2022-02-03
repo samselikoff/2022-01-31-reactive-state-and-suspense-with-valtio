@@ -1,5 +1,5 @@
 {
-  "name": "2022-01-25-remove-state-effects-with-suspense",
+  "name": "2022-01-31-reactive-state-and-suspense-with-valtio",
   "private": true,
   "scripts": {
     "dev": "next dev",
